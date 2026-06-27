@@ -1,42 +1,206 @@
-
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>교과 점수 관리</title>
+
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;margin:20px}
-.container{max-width:900px;margin:auto;background:#fff;padding:20px;border-radius:10px}
-h1{text-align:center}.avg{font-size:20px;font-weight:bold;margin:10px 0}
-button{padding:8px 12px;margin:8px}
-table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:center}
-input{width:80px}
-</style></head><body><div class="container">
-<h1>교과 점수 통계</h1>
-<div class="avg" id="topAvg"></div>
-<button onclick="addRow()">행 추가</button>
-<table><thead><tr><th>교과</th><th>비교과</th><th>총점</th><th>삭제</th></tr></thead><tbody id="tb"></tbody></table>
-<div class="avg" id="bottomAvg"></div>
-</div>
-<script>
-let data=JSON.parse(localStorage.getItem("scores")||"[]");
-if(!data.length)data=[{a:0,b:0}];
-function save(){localStorage.setItem("scores",JSON.stringify(data));}
-function render(){
-data.forEach(x=>x.t=(+x.a||0)+(+x.b||0));
-data.sort((x,y)=>y.t-x.t);
-let tb=document.getElementById("tb");tb.innerHTML="";
-let sa=0,sb=0,st=0;
-data.forEach((r,i)=>{
-sa+=+r.a||0;sb+=+r.b||0;st+=r.t;
-tb.innerHTML+=`<tr>
-<td><input type=number value="${r.a}" oninput="data[${i}].a=+this.value;save();render()"></td>
-<td><input type=number value="${r.b}" oninput="data[${i}].b=+this.value;save();render()"></td>
-<td>${r.t}</td>
-<td><button onclick="del(${i})">삭제</button></td></tr>`;
-});
-let n=data.length||1;
-let txt=`평균 | 교과: ${(sa/n).toFixed(2)} / 비교과: ${(sb/n).toFixed(2)} / 총점: ${(st/n).toFixed(2)}`;
-topAvg.textContent=txt;bottomAvg.textContent=txt;
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    margin:20px;
 }
-function addRow(){data.push({a:0,b:0});save();render();}
-function del(i){data.splice(i,1);if(!data.length)data=[{a:0,b:0}];save();render();}
+.container{
+    max-width:1000px;
+    margin:auto;
+    background:#fff;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,.1);
+}
+h1{
+    text-align:center;
+}
+.avg{
+    font-size:18px;
+    font-weight:bold;
+    margin:8px 0;
+}
+#count{
+    font-size:17px;
+    margin-bottom:15px;
+}
+button{
+    padding:8px 12px;
+    margin:8px 0;
+    cursor:pointer;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+th,td{
+    border:1px solid #ccc;
+    padding:8px;
+    text-align:center;
+}
+th{
+    background:#f0f0f0;
+}
+input[type=number]{
+    width:80px;
+}
+input[type=text]{
+    width:180px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>교과 점수 통계</h1>
+
+<div class="avg" id="topAvg"></div>
+<div id="count"></div>
+
+<button onclick="addRow()">행 추가</button>
+
+<table>
+<thead>
+<tr>
+<th>교과</th>
+<th>비교과</th>
+<th>총점</th>
+<th>비고</th>
+<th>삭제</th>
+</tr>
+</thead>
+
+<tbody id="tb"></tbody>
+
+</table>
+
+<div class="avg" id="bottomAvg"></div>
+
+</div>
+
+<script>
+
+let data = JSON.parse(localStorage.getItem("scores") || "[]");
+
+if(data.length===0){
+    data=[{
+        a:0,
+        b:0,
+        note:""
+    }];
+}
+
+function save(){
+    localStorage.setItem("scores",JSON.stringify(data));
+}
+
+function render(){
+
+    data.forEach(x=>{
+        x.t=(+x.a||0)+(+x.b||0);
+    });
+
+    data.sort((a,b)=>b.t-a.t);
+
+    let tb=document.getElementById("tb");
+    tb.innerHTML="";
+
+    let sa=0;
+    let sb=0;
+    let st=0;
+
+    data.forEach((r,i)=>{
+
+        sa+=+r.a||0;
+        sb+=+r.b||0;
+        st+=r.t;
+
+        tb.innerHTML+=`
+        <tr>
+
+        <td>
+        <input
+        type="number"
+        value="${r.a}"
+        oninput="data[${i}].a=+this.value;save();render()">
+        </td>
+
+        <td>
+        <input
+        type="number"
+        value="${r.b}"
+        oninput="data[${i}].b=+this.value;save();render()">
+        </td>
+
+        <td>${r.t}</td>
+
+        <td>
+        <input
+        type="text"
+        value="${r.note||""}"
+        oninput="data[${i}].note=this.value;save()">
+        </td>
+
+        <td>
+        <button onclick="del(${i})">삭제</button>
+        </td>
+
+        </tr>`;
+    });
+
+    let n=data.length||1;
+
+    let avgText=
+    `평균 | 교과 : ${(sa/n).toFixed(2)}
+     / 비교과 : ${(sb/n).toFixed(2)}
+     / 총점 : ${(st/n).toFixed(2)}`;
+
+    topAvg.textContent=avgText;
+    bottomAvg.textContent=avgText;
+
+    count.textContent="총 데이터 수 : "+data.length+"개";
+}
+
+function addRow(){
+
+    data.push({
+        a:0,
+        b:0,
+        note:""
+    });
+
+    save();
+    render();
+}
+
+function del(i){
+
+    data.splice(i,1);
+
+    if(data.length===0){
+        data=[{
+            a:0,
+            b:0,
+            note:""
+        }];
+    }
+
+    save();
+    render();
+}
+
 render();
-</script></body></html>
+
+</script>
+
+</body>
+</html>
