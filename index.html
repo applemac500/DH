@@ -3,63 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>교과 점수 관리</title>
+<title>교과 점수 및 상태 관리</title>
 
 <style>
-body{
-    font-family:Arial,sans-serif;
-    background:#f4f4f4;
-    margin:20px;
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 20px;
 }
-.container{
-    max-width:1000px;
-    margin:auto;
-    background:#fff;
-    padding:20px;
-    border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,.1);
+.container {
+    max-width: 1100px;
+    margin: auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,.1);
 }
-h1{
-    text-align:center;
+h1 {
+    text-align: center;
 }
-.avg, .min-score{
-    font-size:18px;
-    font-weight:bold;
-    margin:8px 0;
+.avg, .min-score {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 8px 0;
 }
 .min-score {
-    color: #e74c3c; /* 최저 점수는 강조되도록 빨간색 적용 */
+    color: #e74c3c;
     background: #fdf2f2;
     padding: 10px;
     border-radius: 5px;
     border: 1px solid #f9acd0;
 }
-#count{
-    font-size:17px;
-    margin-bottom:15px;
+#count {
+    font-size: 17px;
+    margin-bottom: 15px;
 }
-button{
-    padding:8px 12px;
-    margin:8px 0;
-    cursor:pointer;
+button {
+    padding: 8px 12px;
+    margin: 8px 0;
+    cursor: pointer;
 }
-table{
-    width:100%;
-    border-collapse:collapse;
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
 }
-th,td{
-    border:1px solid #ccc;
-    padding:8px;
-    text-align:center;
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
 }
-th{
-    background:#f0f0f0;
+th {
+    background: #f0f0f0;
 }
-input[type=number]{
-    width:80px;
+input[type=number] {
+    width: 80px;
+    padding: 4px;
 }
-input[type=text]{
-    width:180px;
+input[type=text] {
+    width: 150px;
+    padding: 4px;
+}
+select {
+    padding: 5px;
+    font-size: 14px;
 }
 </style>
 </head>
@@ -68,137 +75,139 @@ input[type=text]{
 
 <div class="container">
 
-<h1>교과 점수 통계</h1>
+    <h1>교과 점수 통계</h1>
 
-<div class="avg" id="topAvg"></div>
-<div id="count"></div>
+    <div class="avg" id="topAvg"></div>
+    <div id="count"></div>
 
-<button onclick="addRow()">행 추가</button>
+    <button onclick="addRow()">행 추가</button>
 
-<table>
-<thead>
-<tr>
-<th>선택</th> <th>교과</th>
-<th>비교과</th>
-<th>총점</th>
-<th>비고</th>
-<th>삭제</th>
-</tr>
-</thead>
+    <table>
+        <thead>
+            <tr>
+                <th>선택</th> 
+                <th>교과</th>
+                <th>비교과</th>
+                <th>총점</th>
+                <th>상태</th>
+                <th>비고</th>
+                <th>삭제</th>
+            </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+    </table>
 
-<tbody id="tb"></tbody>
-
-</table>
-
-<div class="avg" id="bottomAvg"></div>
-<div class="min-score" id="minScoreArea">선택된 학생이 없습니다.</div>
+    <div class="avg" id="bottomAvg"></div>
+    <div class="min-score" id="minScoreArea">선택된 학생이 없습니다.</div>
 
 </div>
 
 <script>
+// 데이터 충돌을 막기 위해 localStorage 키를 "scores_v3"로 변경
+let data = JSON.parse(localStorage.getItem("scores_v3") || "[]");
 
-// LocalStorage 저장 구조에 checked 상태도 함께 저장하도록 보완
-let data = JSON.parse(localStorage.getItem("scores") || "[]");
-
-if(data.length===0){
-    data=[{
-        a:0,
-        b:0,
-        note:"",
-        checked: false // 체크 상태 추가
+if(data.length === 0){
+    data = [{
+        a: 0,
+        b: 0,
+        status: "EB",
+        note: "",
+        checked: false
     }];
 }
 
 function save(){
-    localStorage.setItem("scores",JSON.stringify(data));
+    localStorage.setItem("scores_v3", JSON.stringify(data));
 }
 
 function render(){
-
-    data.forEach(x=>{
-        x.t=(+x.a||0)+(+x.b||0);
+    // 총점 계산
+    data.forEach(x => {
+        x.t = (+x.a || 0) + (+x.b || 0);
     });
 
-    // 주의: 실시간 입력 중에 자동 정렬되면 입력 칸이 튀므로 기존 내림차순 정렬 유지
-    data.sort((a,b)=>b.t-a.t);
+    // 총점 기준으로 내림차순 정렬
+    data.sort((a, b) => b.t - a.t);
 
-    let tb=document.getElementById("tb");
-    tb.innerHTML="";
+    let tb = document.getElementById("tb");
+    tb.innerHTML = "";
 
-    let sa=0;
-    let sb=0;
-    let st=0;
+    let sa = 0;
+    let sb = 0;
+    let st = 0;
     
-    // 체크된 학생들의 총점만 모을 배열
     let checkedScores = [];
 
-    data.forEach((r,i)=>{
+    data.forEach((r, i) => {
+        sa += +r.a || 0;
+        sb += +r.b || 0;
+        st += r.t;
 
-        sa+=+r.a||0;
-        sb+=+r.b||0;
-        st+=r.t;
-
-        // 현재 항목이 체크되어 있다면 배열에 총점 추가
         if(r.checked) {
             checkedScores.push(r.t);
         }
 
-        tb.innerHTML+=`
+        tb.innerHTML += `
         <tr>
-        
-        <td>
-        <input 
-        type="checkbox" 
-        ${r.checked ? 'checked' : ''} 
-        onchange="data[${i}].checked=this.checked; save(); render();">
-        </td>
+            <td>
+                <input 
+                type="checkbox" 
+                ${r.checked ? 'checked' : ''} 
+                onchange="data[${i}].checked=this.checked; save(); render();">
+            </td>
 
-        <td>
-        <input
-        type="number"
-        value="${r.a}"
-        oninput="data[${i}].a=+this.value;save();render()">
-        </td>
+            <td>
+                <input
+                type="number"
+                value="${r.a}"
+                onchange="data[${i}].a=+this.value; save(); render();">
+            </td>
 
-        <td>
-        <input
-        type="number"
-        value="${r.b}"
-        oninput="data[${i}].b=+this.value;save();render()">
-        </td>
+            <td>
+                <input
+                type="number"
+                value="${r.b}"
+                onchange="data[${i}].b=+this.value; save(); render();">
+            </td>
 
-        <td>${r.t}</td>
+            <td><strong>${r.t}</strong></td>
 
-        <td>
-        <input
-        type="text"
-        value="${r.note||""}"
-        oninput="data[${i}].note=this.value;save()">
-        </td>
+            <td>
+                <select onchange="data[${i}].status=this.value; save(); render();">
+                    <option value="EB" ${r.status === 'EB' ? 'selected' : ''}>EB</option>
+                    <option value="DC" ${r.status === 'DC' ? 'selected' : ''}>DC</option>
+                    <option value="WP" ${r.status === 'WP' ? 'selected' : ''}>WP</option>
+                    <option value="HD" ${r.status === 'HD' ? 'selected' : ''}>HD</option>
+                    <option value="부적격" ${r.status === '부적격' ? 'selected' : ''}>부적격</option>
+                </select>
+            </td>
 
-        <td>
-        <button onclick="del(${i})">삭제</button>
-        </td>
+            <td>
+                <input
+                type="text"
+                value="${r.note || ""}"
+                oninput="data[${i}].note=this.value; save();">
+            </td>
 
+            <td>
+                <button onclick="del(${i})">삭제</button>
+            </td>
         </tr>`;
     });
 
-    let n=data.length||1;
-
-    let avgText=
+    let n = data.length || 1;
+    let avgText = 
     `평균 | 교과 : ${(sa/n).toFixed(2)}
      / 비교과 : ${(sb/n).toFixed(2)}
      / 총점 : ${(st/n).toFixed(2)}`;
 
-    topAvg.textContent=avgText;
-    bottomAvg.textContent=avgText;
+    document.getElementById("topAvg").textContent = avgText;
+    document.getElementById("bottomAvg").textContent = avgText;
+    document.getElementById("count").textContent = "총 데이터 수 : " + data.length + "개";
 
-    count.textContent="총 데이터 수 : "+data.length+"개";
-
-    // --- 체크된 학생 중 최저 점수 계산 및 표시 ---
+    // 체크된 학생 중 최저 점수 계산
     let minScoreArea = document.getElementById("minScoreArea");
     if(checkedScores.length > 0) {
-        // Math.min을 이용해 배열 내 최저값 산출
         let minScore = Math.min(...checkedScores);
         minScoreArea.textContent = `체크된 학생 중 최저 총점: ${minScore}점`;
     } else {
@@ -208,32 +217,33 @@ function render(){
 
 function addRow(){
     data.push({
-        a:0,
-        b:0,
-        note:"",
-        checked: false // 새 행도 기본값은 체크 안 됨
+        a: 0,
+        b: 0,
+        status: "EB",
+        note: "",
+        checked: false
     });
-
     save();
     render();
 }
 
 function del(i){
-    data.splice(i,1);
+    data.splice(i, 1);
 
-    if(data.length===0){
-        data=[{
-            a:0,
-            b:0,
-            note:"",
+    if(data.length === 0){
+        data = [{
+            a: 0,
+            b: 0,
+            status: "EB",
+            note: "",
             checked: false
         }];
     }
-
     save();
     render();
 }
 
+// 초기 화면 렌더링
 render();
 
 </script>
