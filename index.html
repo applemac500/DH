@@ -22,10 +22,17 @@ body{
 h1{
     text-align:center;
 }
-.avg{
+.avg, .min-score{
     font-size:18px;
     font-weight:bold;
     margin:8px 0;
+}
+.min-score {
+    color: #e74c3c; /* 최저 점수는 강조되도록 빨간색 적용 */
+    background: #fdf2f2;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #f9acd0;
 }
 #count{
     font-size:17px;
@@ -71,7 +78,7 @@ input[type=text]{
 <table>
 <thead>
 <tr>
-<th>교과</th>
+<th>선택</th> <th>교과</th>
 <th>비교과</th>
 <th>총점</th>
 <th>비고</th>
@@ -84,18 +91,21 @@ input[type=text]{
 </table>
 
 <div class="avg" id="bottomAvg"></div>
+<div class="min-score" id="minScoreArea">선택된 학생이 없습니다.</div>
 
 </div>
 
 <script>
 
+// LocalStorage 저장 구조에 checked 상태도 함께 저장하도록 보완
 let data = JSON.parse(localStorage.getItem("scores") || "[]");
 
 if(data.length===0){
     data=[{
         a:0,
         b:0,
-        note:""
+        note:"",
+        checked: false // 체크 상태 추가
     }];
 }
 
@@ -109,6 +119,7 @@ function render(){
         x.t=(+x.a||0)+(+x.b||0);
     });
 
+    // 주의: 실시간 입력 중에 자동 정렬되면 입력 칸이 튀므로 기존 내림차순 정렬 유지
     data.sort((a,b)=>b.t-a.t);
 
     let tb=document.getElementById("tb");
@@ -117,6 +128,9 @@ function render(){
     let sa=0;
     let sb=0;
     let st=0;
+    
+    // 체크된 학생들의 총점만 모을 배열
+    let checkedScores = [];
 
     data.forEach((r,i)=>{
 
@@ -124,8 +138,20 @@ function render(){
         sb+=+r.b||0;
         st+=r.t;
 
+        // 현재 항목이 체크되어 있다면 배열에 총점 추가
+        if(r.checked) {
+            checkedScores.push(r.t);
+        }
+
         tb.innerHTML+=`
         <tr>
+        
+        <td>
+        <input 
+        type="checkbox" 
+        ${r.checked ? 'checked' : ''} 
+        onchange="data[${i}].checked=this.checked; save(); render();">
+        </td>
 
         <td>
         <input
@@ -168,14 +194,24 @@ function render(){
     bottomAvg.textContent=avgText;
 
     count.textContent="총 데이터 수 : "+data.length+"개";
+
+    // --- 체크된 학생 중 최저 점수 계산 및 표시 ---
+    let minScoreArea = document.getElementById("minScoreArea");
+    if(checkedScores.length > 0) {
+        // Math.min을 이용해 배열 내 최저값 산출
+        let minScore = Math.min(...checkedScores);
+        minScoreArea.textContent = `체크된 학생 중 최저 총점: ${minScore}점`;
+    } else {
+        minScoreArea.textContent = "체크된 학생이 없습니다. 왼쪽 체크박스를 선택해주세요.";
+    }
 }
 
 function addRow(){
-
     data.push({
         a:0,
         b:0,
-        note:""
+        note:"",
+        checked: false // 새 행도 기본값은 체크 안 됨
     });
 
     save();
@@ -183,14 +219,14 @@ function addRow(){
 }
 
 function del(i){
-
     data.splice(i,1);
 
     if(data.length===0){
         data=[{
             a:0,
             b:0,
-            note:""
+            note:"",
+            checked: false
         }];
     }
 
